@@ -1,5 +1,5 @@
 Flask
-<<<<<<< HEAD
+
 Flask-SocketIO
 eventlet
 gunicorn
