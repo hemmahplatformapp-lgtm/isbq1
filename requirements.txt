@@ -1,5 +1,5 @@
 Flask==2.3.2
 Flask-SocketIO==5.3.3
 Flask-SQLAlchemy==3.0.5
-pandas>=2.2.3
-numpy==1.26.2 --only-binary=:all:
+pandas==2.3.3 --only-binary=:all:
+numpy==2.3.5 --only-binary=:all:
