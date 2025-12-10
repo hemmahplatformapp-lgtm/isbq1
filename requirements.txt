@@ -1,13 +1,12 @@
 # Core dependencies
-Flask
-Flask-SocketIO
-Flask-SQLAlchemy
-pandas
-python-dotenv
-eventlet
+Flask==2.3.2
+Flask-SocketIO==5.3.3
+Flask-SQLAlchemy==3.0.5
+pandas==2.1.1
+python-dotenv==1.0.0
+eventlet==0.33.3
 
 # Production extras
-gunicorn
-psycopg2-binary
-numpy
-
+gunicorn==21.2.0
+psycopg2-binary==2.9.7
+numpy==1.26.2
