@@ -157,6 +157,16 @@ updateCurrentTime();
 
 // --- Chart Initialization ---
 function initLocationChart() {
+    // Destroy existing instance if present (prevents "Canvas is already in use" errors)
+    try {
+        if (locationChart) {
+            locationChart.destroy();
+            locationChart = null;
+        }
+    } catch (err) {
+        console.warn('Error destroying existing locationChart:', err);
+    }
+
     const ctx = document.getElementById('locationChart').getContext('2d');
     locationChart = new Chart(ctx, {
         type: 'doughnut',

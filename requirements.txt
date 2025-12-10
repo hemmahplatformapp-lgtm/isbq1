@@ -1,7 +1,21 @@
 Flask
+<<<<<<< HEAD
 Flask-SocketIO
 eventlet
 gunicorn
 Flask-SQLAlchemy
 pandas
 python-dotenv
+=======
+Flask-SQLAlchemy
+Flask-SocketIO
+pandas
+
+eventlet
+python-dotenv
+
+# Production extras
+gunicorn
+psycopg2-binary
+numpy
+>>>>>>> 410e988 (Deploy fixes: eventlet monkey_patch, DB config, safe seeding, 500 handler, update requirements, fix Chart.js)

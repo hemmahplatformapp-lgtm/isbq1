@@ -1,3 +1,7 @@
+import eventlet
+# Must monkey-patch early to make eventlet compatible with socket/IO libraries
+eventlet.monkey_patch()
+
 import os
 import csv
 import time
@@ -6,7 +10,6 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit
-import eventlet
 
 # Load environment variables
 load_dotenv()
@@ -14,7 +17,13 @@ load_dotenv()
 # --- Configuration ---
 # app.py is now in backend/, so '../frontend' is the correct path to the frontend folder
 app = Flask(__name__, static_folder='../frontend/static', template_folder='../frontend')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pilgrim_events.db'
+
+# Configure database from environment for production (Railway/Postgres). Fall back to SQLite for local dev.
+database_url = os.getenv('DATABASE_URL') or os.getenv('SQLALCHEMY_DATABASE_URI') or 'sqlite:///pilgrim_events.db'
+# Some providers (Heroku-style) provide DATABASE_URL starting with 'postgres://'; SQLAlchemy expects 'postgresql://'
+if database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
@@ -80,24 +89,45 @@ def load_data():
         SIMULATION_STATE['total_records'] = 0
 
 def seed_db():
-    """Seeds the database with all historical data."""
+    """Seeds the database with historical data if the table is empty.
+
+    This function avoids destructive operations like `drop_all()` so it is safe to
+    run in production environments (multiple workers or managed DBs).
+    """
     with app.app_context():
-        db.drop_all()
         db.create_all()
-        
+
+        # Load data into memory if necessary
         if not SIMULATION_STATE['data']:
             load_data()
 
+        # Only seed if the table is empty to avoid overwriting production data
+        try:
+            existing = db.session.query(PilgrimEvent).first()
+        except Exception:
+            existing = None
+
+        if existing:
+            print("Database already contains data; skipping seeding.")
+            return
+
         print("Seeding database...")
         for row in SIMULATION_STATE['data']:
+            # Defensive parsing in case of malformed timestamps
+            try:
+                ts = datetime.fromisoformat(row['timestamp'])
+            except Exception:
+                # Fall back to current time if parsing fails
+                ts = datetime.utcnow()
+
             event = PilgrimEvent(
-                timestamp=datetime.fromisoformat(row['timestamp']),
-                pilgrim_id=row['pilgrim_id'],
-                temp=float(row['temp']),
-                ground=row['ground'],
-                nusuk=row['nusuk'],
-                sos=row['sos'] == 'True',
-                lost_id=row['lost_id'] if row['lost_id'] else None
+                timestamp=ts,
+                pilgrim_id=row.get('pilgrim_id', 'unknown'),
+                temp=float(row.get('temp', 0.0)),
+                ground=row.get('ground', ''),
+                nusuk=row.get('nusuk', ''),
+                sos=(row.get('sos') == 'True'),
+                lost_id=row.get('lost_id') if row.get('lost_id') else None
             )
             db.session.add(event)
         db.session.commit()
@@ -467,6 +497,18 @@ def get_location_distribution():
 def get_cumulative_stats():
     """Returns cumulative statistics during simulation."""
     return jsonify(STAT_COUNTERS)
+
+
+# Generic error handler: return JSON for API endpoints to avoid HTML error pages
+@app.errorhandler(500)
+def handle_internal_error(e):
+    # If request is for API, return JSON to prevent frontend JSON parsing errors
+    try:
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'internal_server_error'}), 500
+    except Exception:
+        pass
+    return ("Internal Server Error", 500)
 
 # --- SocketIO Events ---
 
