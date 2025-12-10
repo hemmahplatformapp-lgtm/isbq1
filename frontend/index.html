@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISBAQ - لوحة تحكم الأمن والخدمات</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="manifest" href="/static/manifest.json">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>🛡️ لوحة تحكم ISBAQ - نظام إدارة الحجاج</h1>
+            <div class="header-status">
+                <div id="status-indicator" class="status-green">متصل</div>
+                <div class="connection-time">الوقت الحالي: <span id="current-time">--:--:--</span></div>
+            </div>
+        </header>
+
+        <section class="controls-panel">
+            <h2>🎮 التحكم في المحاكاة</h2>
+            <div class="controls-group">
+                <button id="start-btn" class="control-btn primary">▶️ بدء</button>
+                <button id="pause-btn" class="control-btn secondary" disabled>⏸️ إيقاف مؤقت</button>
+                <button id="reset-btn" class="control-btn danger">🔄 إعادة تعيين</button>
+                <button id="next-step-btn" class="control-btn info">⏭️ الخطوة التالية</button>
+            </div>
+            <div class="speed-group">
+                <label for="speed-select">⚡ سرعة التشغيل:</label>
+                <select id="speed-select">
+                    <option value="1">1x - عادي</option>
+                    <option value="2">2x - سريع</option>
+                    <option value="4">4x - سريع جداً</option>
+                </select>
+            </div>
+            <p id="simulation-info" class="simulation-info">الحالة: متوقف. السجل: 0 / 0</p>
+        </section>
+
+        <section class="stats-overview">
+            <div class="stat-card stat-red">
+                <div class="stat-icon">🚨</div>
+                <div class="stat-content">
+                    <div class="stat-label">مخالفات المسار</div>
+                    <div class="stat-value" id="red-stat">0</div>
+                </div>
+            </div>
+            <div class="stat-card stat-orange">
+                <div class="stat-icon">🚑</div>
+                <div class="stat-content">
+                    <div class="stat-label">نداءات استغاثة</div>
+                    <div class="stat-value" id="orange-stat">0</div>
+                </div>
+            </div>
+            <div class="stat-card stat-yellow">
+                <div class="stat-icon">☀️</div>
+                <div class="stat-content">
+                    <div class="stat-label">إجهاد حراري</div>
+                    <div class="stat-value" id="yellow-stat">0</div>
+                </div>
+            </div>
+            <div class="stat-card stat-blue">
+                <div class="stat-icon">👤</div>
+                <div class="stat-content">
+                    <div class="stat-label">أشخاص مفقودون</div>
+                    <div class="stat-value" id="blue-stat">0</div>
+                </div>
+            </div>
+            <div class="stat-card stat-green" id="bracelet-card">
+                <div class="stat-icon">🔗</div>
+                <div class="stat-content">
+                    <div class="stat-label">الأساور المحاكية</div>
+                    <div class="stat-value" id="bracelet-count">0</div>
+                    <div id="bracelet-container" class="bracelet-container" aria-live="polite"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="main-grid">
+            <div class="card counters-card">
+                <h2>📊 العدادات الحية</h2>
+                <div class="counter-item">
+                    <span class="counter-label">الموقع الحالي (Ground):</span>
+                    <span id="ground-counter" class="counter-value">---</span>
+                </div>
+                <div class="counter-item">
+                    <span class="counter-label">المسار المعتمد (Nusuk):</span>
+                    <span id="nusuk-counter" class="counter-value">---</span>
+                </div>
+                <div class="counter-item">
+                    <span class="counter-label">وقت المحاكاة:</span>
+                    <span id="time-counter" class="counter-value">---</span>
+                </div>
+                <div class="counter-item">
+                    <span class="counter-label">درجة الحرارة الحالية:</span>
+                    <span id="temp-counter" class="counter-value">---</span>
+                </div>
+            </div>
+
+            <div class="card alert-log-card">
+                <h2>📋 سجل الإجراءات والتنبيهات</h2>
+                <div class="action-log-container">
+                    <ul id="action-log">
+                        <!-- Log entries will be added here -->
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card chart-card">
+                <h2>📈 توزيع الحجاج حسب الموقع</h2>
+                <canvas id="locationChart"></canvas>
+            </div>
+
+            <div class="card chart-card">
+                <h2>🌡️ إحصائيات درجة الحرارة</h2>
+                <div class="temp-stats">
+                    <div class="temp-stat-item">
+                        <span class="temp-label">الحد الأدنى:</span>
+                        <span class="temp-value" id="min-temp">---</span>
+                    </div>
+                    <div class="temp-stat-item">
+                        <span class="temp-label">الحد الأقصى:</span>
+                        <span class="temp-value" id="max-temp">---</span>
+                    </div>
+                    <div class="temp-stat-item">
+                        <span class="temp-label">المتوسط:</span>
+                        <span class="temp-value" id="avg-temp">---</span>
+                    </div>
+                </div>
+                <canvas id="temperatureChart" style="margin-top: 20px;"></canvas>
+            </div>
+
+            <div class="card chart-card">
+                <h2>⚠️ رسم بياني للتنبيهات</h2>
+                <canvas id="alertsChart"></canvas>
+            </div>
+
+            <div class="card telemetry-card">
+                <h2>📡 بيانات الحاج الحالية (تفاعلية)</h2>
+                <div class="telemetry-display">
+                    <div class="telemetry-row">
+                        <span class="telemetry-label">معرّف الحاج:</span>
+                        <span class="telemetry-value" id="telemetry-id">---</span>
+                    </div>
+                    <div class="telemetry-row">
+                        <span class="telemetry-label">درجة الحرارة:</span>
+                        <span class="telemetry-value" id="telemetry-temp">---</span>
+                    </div>
+                    <div class="telemetry-row">
+                        <span class="telemetry-label">الموقع الحالي:</span>
+                        <span class="telemetry-value" id="telemetry-ground">---</span>
+                    </div>
+                    <div class="telemetry-row">
+                        <span class="telemetry-label">المسار المعتمد:</span>
+                        <span class="telemetry-value" id="telemetry-nusuk">---</span>
+                    </div>
+                    <div class="telemetry-row">
+                        <span class="telemetry-label">حالة الاستغاثة:</span>
+                        <span class="telemetry-value" id="telemetry-sos">---</span>
+                    </div>
+                    <div class="telemetry-row">
+                        <span class="telemetry-label">حالة التنبيه:</span>
+                        <span class="telemetry-alert" id="telemetry-alert">---</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Lost Person Modal -->
+    <div id="lost-person-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>⚠️ تنبيه: شخص مفقود</h2>
+            <p>تم الإبلاغ عن فقدان الحاج رقم: <strong id="lost-id-display"></strong></p>
+            <p>يرجى تفعيل بروتوكول البحث والإشعار.</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="/static/script.js"></script>
+</body>
+</html>
