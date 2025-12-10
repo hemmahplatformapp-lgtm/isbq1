@@ -1,7 +1,7 @@
 Flask
-Flask-SQLAlchemy
 Flask-SocketIO
-pandas
-
 eventlet
+gunicorn
+Flask-SQLAlchemy
+pandas
 python-dotenv
