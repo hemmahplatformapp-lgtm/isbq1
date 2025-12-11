@@ -1,3 +1,7 @@
+import eventlet
+# Must monkey-patch early to make eventlet compatible with socket/IO libraries
+eventlet.monkey_patch()
+
 import os
 import csv
 import time
@@ -24,8 +28,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 db = SQLAlchemy(app)
-# Let Flask-SocketIO choose the best async mode (gevent/eventlet) instead of forcing eventlet at import time.
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode=None)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # --- Global State for Simulation Control ---
 SIMULATION_STATE = {
@@ -89,7 +92,7 @@ def seed_db():
     """Seeds the database with historical data if the table is empty.
 
     This function avoids destructive operations like `drop_all()` so it is safe to
-    run in production environments (multiple workers أو managed DBs).
+    run in production environments (multiple workers or managed DBs).
     """
     with app.app_context():
         db.create_all()
@@ -182,8 +185,7 @@ def simulation_runner():
         load_data()
 
     while True:
-        # Use socketio.sleep which is compatible with the chosen async mode
-        socketio.sleep(0.1) # Non-blocking sleep
+        eventlet.sleep(0.1) # Non-blocking sleep
 
         if SIMULATION_STATE['running']:
             if SIMULATION_STATE['current_index'] < SIMULATION_STATE['total_records']:
@@ -236,14 +238,14 @@ def simulation_runner():
                 # Wait based on speed
                 # Simulate a 1-second delay for 1x speed, adjusted by the speed factor
                 delay = 1.0 / SIMULATION_STATE['speed']
-                socketio.sleep(delay)
+                eventlet.sleep(delay)
             else:
                 # Simulation finished
                 SIMULATION_STATE['running'] = False
                 socketio.emit('simulation_status', {'status': 'finished'}, namespace='/ws/demo')
                 print("Simulation finished.")
         else:
-            socketio.sleep(1) # Wait longer when paused
+            eventlet.sleep(1) # Wait longer when paused
 
 # --- Routes and API Endpoints ---
 
@@ -520,21 +522,21 @@ def handle_disconnect():
     print('Client disconnected from /ws/demo')
 
 # --- Application Startup ---
-#if running directly start background task and socketio server
 if __name__ == '__main__':
     load_data()
     # DB seeding is now handled locally since we removed Docker
     seed_db() 
     
-    # Start the simulation background task in a way compatible with Flask-SocketIO
-    socketio.start_background_task(simulation_runner)
+    # Start the simulation thread
+    eventlet.spawn(simulation_runner)
     
     # Run the application
     print("Starting Flask-SocketIO server...")
     socketio.run(app, host='0.0.0.0', port=5000)
 
-# For WSGI servers (gunicorn) start background task at import time without importing eventlet
-else:
+# Use eventlet for WSGI server
+if __name__ != '__main__':
+    # This block is for running with a WSGI server like gunicorn/eventlet
     load_data()
-    socketio.start_background_task(simulation_runner)
+    eventlet.spawn(simulation_runner)
     application = app
