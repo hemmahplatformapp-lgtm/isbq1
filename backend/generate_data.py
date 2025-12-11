@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import random
 
 # Define the number of records and the time range
-NUM_RECORDS = 10000
+NUM_RECORDS = 300
 START_TIME = datetime(2025, 6, 15, 8, 0, 0) # Simulated Hajj day start
 
 # Possible locations for 'ground' and 'nusuk'
